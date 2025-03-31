@@ -4,4 +4,4 @@ enableCORS = false
 enableXsrfProtection = false
 
 [runner]
-postScript = "./setup.sh"
+postScript = "chmod +x setup.sh && ./setup.sh"

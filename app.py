@@ -6,6 +6,26 @@ from openpyxl import Workbook
 from playwright.async_api import async_playwright
 import tempfile
 from bs4 import BeautifulSoup
+import subprocess
+
+def ensure_playwright_browser():
+    """確保 Playwright 的 Chromium 瀏覽器已安裝"""
+    browser_path = os.path.expanduser("~/.cache/ms-playwright/chromium-1097/chrome-linux/chrome")
+    if not os.path.exists(browser_path):
+        print("安裝 Playwright 瀏覽器...")
+        try:
+            subprocess.run(["playwright", "install", "chromium"], check=True)
+            print("Playwright 瀏覽器安裝成功")
+        except Exception as e:
+            print(f"安裝 Playwright 瀏覽器失敗: {e}")
+            try:
+                subprocess.run(["python", "-m", "playwright", "install", "chromium"], check=True)
+                print("使用 python -m 安裝 Playwright 瀏覽器成功")
+            except Exception as e:
+                print(f"使用 python -m 安裝 Playwright 瀏覽器失敗: {e}")
+
+# 啟動時安裝瀏覽器
+ensure_playwright_browser()
 
 # 設定頁面配置
 st.set_page_config(
