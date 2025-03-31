@@ -1,3 +1,5 @@
+libpango-1.0-0
+libcairo2
 xvfb
 libnss3
 libnspr4
@@ -12,3 +14,6 @@ libxfixes3
 libxrandr2
 libgbm1
 libasound2
+libpangocairo-1.0-0
+libfontconfig1
+libgtk-3-0

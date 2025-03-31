@@ -15,11 +15,20 @@ def ensure_playwright_browser():
         print("安裝 Playwright 瀏覽器...")
         try:
             subprocess.run(["playwright", "install", "chromium"], check=True)
+            # 嘗試安裝瀏覽器依賴，雖然在雲端環境中可能無法使用 sudo
+            try:
+                subprocess.run(["playwright", "install-deps", "chromium"], check=False)
+            except:
+                pass
             print("Playwright 瀏覽器安裝成功")
         except Exception as e:
             print(f"安裝 Playwright 瀏覽器失敗: {e}")
             try:
                 subprocess.run(["python", "-m", "playwright", "install", "chromium"], check=True)
+                try:
+                    subprocess.run(["python", "-m", "playwright", "install-deps", "chromium"], check=False)
+                except:
+                    pass
                 print("使用 python -m 安裝 Playwright 瀏覽器成功")
             except Exception as e:
                 print(f"使用 python -m 安裝 Playwright 瀏覽器失敗: {e}")
@@ -47,7 +56,18 @@ async def fetch_judgments(keyword, max_pages=25, page_size=20):
     status_placeholder.text("正在準備查詢...")
     
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True, args=['--no-sandbox', '--disable-dev-shm-usage'])
+        browser = await p.chromium.launch(
+            headless=True,
+            args=[
+                '--no-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-gpu',
+                '--disable-software-rasterizer',
+                '--disable-accelerated-2d-canvas',
+                '--no-zygote',
+                '--single-process'
+            ]
+        )
         context = await browser.new_context(
             viewport={"width": 1280, "height": 800},
             user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
