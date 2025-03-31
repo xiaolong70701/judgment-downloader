@@ -1,0 +1,7 @@
+[server]
+headless = true
+enableCORS = false
+enableXsrfProtection = false
+
+[runner]
+postScript = "./setup.sh"
