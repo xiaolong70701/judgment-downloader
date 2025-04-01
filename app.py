@@ -9,8 +9,13 @@ from bs4 import BeautifulSoup
 import subprocess
 import zipfile
 import datetime
-import ua_generator
+import random
 from contextlib import asynccontextmanager
+
+ua_list = []
+
+with open('ua_list.txt', 'r') as f:
+    ua_list = f.readlines()
 
 def ensure_playwright_browser():
     """確保 Playwright 的 Chromium 瀏覽器已安裝"""
@@ -67,10 +72,10 @@ async def get_browser_context():
                 '--single-process'
             ]
         )
-        ua = ua_generator.generate(device='desktop', browser=('chrome', 'edge'))
+        ua = random.choice(ua_list)
         context = await browser.new_context(
             viewport={"width": 1280, "height": 800},
-            user_agent=ua.text
+            user_agent=ua
         )
         yield context
     finally:
@@ -396,7 +401,7 @@ async def download_judgment_pdf(context, url, download_folder):
         
         # 下載 PDF
         headers = {
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+            "User-Agent": random.choice(ua_list)
         }
         response = requests.get(pdf_url, headers=headers)
         
