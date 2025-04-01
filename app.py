@@ -10,6 +10,7 @@ import subprocess
 import zipfile
 import datetime
 import random
+import pandas as pd
 from contextlib import asynccontextmanager
 
 ua_list = []
@@ -563,7 +564,9 @@ async def main_async():
                             "裁判案由": judgment["case_reason"]
                         })
                     
-                    st.table(table_data)
+                    df = pd.DataFrame(table_data)
+                    df = df.reset_index(drop=True)
+                    st.table(df)
                     
                     if st.button(f"下載當前頁 PDF（{len(current_page_judgments)} 筆）"):
                         st.session_state.batch_download = True
