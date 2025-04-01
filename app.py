@@ -17,6 +17,8 @@ ua_list = []
 with open('ua_list.txt', 'r') as f:
     ua_list = f.readlines()
 
+ua_list = [ua.strip() for ua in ua_list]
+
 def ensure_playwright_browser():
     """確保 Playwright 的 Chromium 瀏覽器已安裝"""
     browser_path = os.path.expanduser("~/.cache/ms-playwright/chromium-1097/chrome-linux/chrome")
