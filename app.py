@@ -377,7 +377,6 @@ async def download_judgment_pdf(context, url, download_folder):
                 except:
                     continue
         
-        # 清理檔名中的非法字元
         def clean_filename(text):
             keep_chars = (' ', '_', '-', '，', '。', '、', '：', '；', '？', '！', 
                          '「', '」', '『', '』', '（', '）', '【', '】', '《', '》')
@@ -386,14 +385,11 @@ async def download_judgment_pdf(context, url, download_folder):
         case_number_clean = clean_filename(case_number)
         case_reason_clean = clean_filename(case_reason)
         
-        # 組合檔名
         safe_name = f"{case_number_clean}_{case_reason_clean}.pdf"
         
-        # 如果檔名過長，適當縮短
         if len(safe_name) > 200:
             safe_name = f"{case_number_clean[:150]}_{case_reason_clean[:50]}.pdf"
         
-        # 擷取 PDF 連結
         pdf_link = await page.query_selector("#hlExportPDF")
         if not pdf_link:
             return None, "找不到PDF下載連結"
@@ -402,7 +398,6 @@ async def download_judgment_pdf(context, url, download_folder):
         if pdf_url.startswith("/"):
             pdf_url = "https://judgment.judicial.gov.tw" + pdf_url
         
-        # 下載 PDF
         headers = {
             "User-Agent": random.choice(ua_list)
         }
@@ -546,7 +541,6 @@ async def main_async():
                     total_items = len(st.session_state.judgments)
                     total_result_pages = (total_items + items_per_page - 1) // items_per_page
                     
-                    # 顯示當前頁碼和總頁數
                     st.write(f"當前頁碼: {st.session_state.current_display_page}/{total_result_pages}")
                     
                     # 分頁控制按鈕
@@ -566,7 +560,6 @@ async def main_async():
                         if st.button("最後一頁", disabled=st.session_state.current_display_page == total_result_pages):
                             st.session_state.current_display_page = total_result_pages
                     
-                    # 顯示當前頁的判決
                     start_idx = (st.session_state.current_display_page - 1) * items_per_page
                     end_idx = min(start_idx + items_per_page, total_items)
                     
