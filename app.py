@@ -443,6 +443,25 @@ def create_excel(judgments):
     
     return temp_file.name
 
+with st.sidebar:
+    st.header("關於本工具")
+    st.markdown("""
+    本工具為**司法院裁判書查詢與批量下載工具**，
+    方便您快速搜尋與下載公開裁判書 PDF。
+    """)
+    st.header("使用教學")
+    st.markdown("""
+    1. 輸入查詢關鍵字  
+    2. 選擇查詢頁數 (最多僅能獲取 25頁 / 500 筆資料)  
+    3. 點擊「開始查詢」  
+    4. 可下載 Excel 或批量下載 PDF
+    """)
+
+    st.header("⚠️ 檢索字詞說明事項")
+    st.markdown("""
+    有關檢索字詞說明，請參見[司法院裁判書系統](https://judgment.judicial.gov.tw/FJUD/default.aspx)檢索字詞輔助說明。進入網頁後於搜尋欄點擊最右邊的「檢索字詞輔助說明」即可參閱。
+    """)
+
 async def main_async():
     """非同步主函數"""
     st.title("⚖️ 裁判書查詢與下載工具")
@@ -471,29 +490,29 @@ async def main_async():
     if "current_display_page" not in st.session_state:
         st.session_state.current_display_page = 1
     
-    with st.sidebar:
-        st.header("查詢設定")
-        keyword = st.text_input(
-            "查詢關鍵字", 
-            value="(法院+管轄)&公證處",
-            help="使用進階查詢語法，例如：(保險公司&執行命令)&最高"
-        )
-        
-        max_pages = st.number_input(
-            "查詢頁數", 
-            min_value=1, 
-            max_value=25, 
-            value=1,
-            help="設定要查詢的頁數（每頁約20筆結果，最多25頁）"
-        )
-        
-        
-        if st.button("開始查詢"):
-            st.session_state.search_clicked = True
-            st.session_state.search_completed = False
-            st.session_state.download_all = False
-            st.session_state.judgments = []
-            st.session_state.excel_file = None
+    keyword = st.text_input(
+        "查詢關鍵字", 
+        value="(法院+管轄)&公證處",
+        help="使用進階查詢語法，例如：(保險公司&執行命令)&最高"
+    )
+
+    max_pages = st.number_input(
+        "查詢頁數", 
+        min_value=1, 
+        max_value=25, 
+        value=1,
+        help="設定要查詢的頁數（每頁約20筆結果，最多25頁）"
+    )
+
+    if "search_clicked" not in st.session_state:
+        st.session_state.search_clicked = False
+
+    if st.button("開始查詢"):
+        st.session_state.search_clicked = True
+        st.session_state.search_completed = False
+        st.session_state.download_all = False
+        st.session_state.judgments = []
+        st.session_state.excel_file = None
     
     async with get_browser_context() as context:
         if st.session_state.get("search_clicked", False):
