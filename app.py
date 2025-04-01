@@ -1,5 +1,6 @@
 import asyncio
 import os
+import csv
 import requests
 import streamlit as st
 from openpyxl import Workbook
@@ -88,7 +89,7 @@ async def get_browser_context():
             await browser.close()
 
 async def get_judgment_details(context, url):
-    """獲取裁判詳細資訊（字號、日期、案由）"""
+    """獲取裁判詳細資訊（字號、日期、案由和裁判全文）"""
     page = None
     try:
         page = await context.new_page()
@@ -102,7 +103,9 @@ async def get_judgment_details(context, url):
         case_number = "未找到裁判字號"
         case_date = "未找到裁判日期"
         case_reason = "未找到案由"
+        full_judgment_text = "未找到裁判全文"
         
+        # Extract case details
         for row in rows:
             text = await row.inner_text()
             if "裁判字號：" in text:
@@ -130,17 +133,25 @@ async def get_judgment_details(context, url):
                 except:
                     continue
         
+        # Extract the full judgment text (from a different section)
+        judgment_text_element = await page.query_selector(".htmlcontent")
+        if judgment_text_element:
+            full_judgment_text = await judgment_text_element.inner_text()
+            full_judgment_text = full_judgment_text.strip()
+
         return {
             "case_number": case_number,
             "case_date": case_date,
-            "case_reason": case_reason
+            "case_reason": case_reason,
+            "case_text": full_judgment_text
         }
     except Exception as e:
         print(f"獲取裁判詳細資訊失敗: {e}")
         return {
             "case_number": "獲取失敗",
             "case_date": "獲取失敗",
-            "case_reason": "獲取失敗"
+            "case_reason": "獲取失敗",
+            "case_text": "獲取失敗"
         }
     finally:
         if page:
@@ -196,7 +207,8 @@ async def fetch_judgments(context, keyword, max_pages=25):
                         "url": href,
                         "case_number": details["case_number"],
                         "case_date": details["case_date"],
-                        "case_reason": details["case_reason"]
+                        "case_reason": details["case_reason"],
+                        "case_text": details["case_text"]
                     })
                 progress_placeholder.progress(1.0)
                 status_placeholder.text(f"找到 {len(judgment_urls)} 筆判決")
@@ -225,7 +237,8 @@ async def fetch_judgments(context, keyword, max_pages=25):
                     "url": url,
                     "case_number": details["case_number"],
                     "case_date": details["case_date"],
-                    "case_reason": details["case_reason"]
+                    "case_reason": details["case_reason"],
+                    "case_text": details["case_text"]
                 })
             
             all_judgments.extend(page_judgments)
@@ -277,7 +290,7 @@ async def fetch_judgments(context, keyword, max_pages=25):
         total_pages = await get_total_pages(frame)
         
         progress_placeholder.progress(1.0)
-        status_placeholder.text(f"完成查詢 - 共 {len(all_judgments)} 筆判決 ({current_page-1}/{total_pages} 頁)")
+        status_placeholder.text(f"完成查詢！")
         
         return all_judgments, total_pages
         
@@ -421,7 +434,7 @@ def create_excel(judgments):
     """建立Excel檔案"""
     wb = Workbook()
     ws = wb.active
-    ws.append(["序號", "裁判字號", "裁判日期", "裁判案由", "判決網址"])
+    ws.append(["序號", "裁判字號", "裁判日期", "裁判案由", "判決網址", "裁判書全文"])
     
     for idx, judgment in enumerate(judgments, 1):
         ws.append([
@@ -429,7 +442,8 @@ def create_excel(judgments):
             judgment["case_number"],
             judgment["case_date"],
             judgment["case_reason"],
-            judgment["url"]
+            "https://judgment.judicial.gov.tw/FJUD/" + judgment["url"],
+            judgment["case_text"]
         ])
     
     temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
@@ -438,23 +452,54 @@ def create_excel(judgments):
     
     return temp_file.name
 
+def create_csv(judgments):
+    """建立CSV檔案"""
+    # 創建一個臨時檔案
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".csv", mode='w', newline='', encoding='utf-8-sig')
+    
+    # 定義 CSV 寫入器
+    writer = csv.writer(temp_file)
+    
+    # 寫入標題
+    writer.writerow(["序號", "裁判字號", "裁判日期", "裁判案由", "判決網址", "裁判書全文"])
+    
+    # 寫入每筆裁判資料
+    for idx, judgment in enumerate(judgments, 1):
+        writer.writerow([
+            idx,
+            judgment["case_number"],
+            judgment["case_date"],
+            judgment["case_reason"],
+            "https://judgment.judicial.gov.tw/FJUD/" + judgment["url"],
+            judgment["case_text"]
+        ])
+    
+    temp_file.close()
+    
+    return temp_file.name
+
 with st.sidebar:
-    st.header("關於本工具")
     st.markdown("""
+    ## 關於本工具
+                
     本工具為**司法院裁判書查詢與批量下載工具**，
     方便您快速搜尋與下載公開裁判書 PDF。
-    """)
-    st.header("使用教學")
-    st.markdown("""
+    
+    ## 使用教學
+                
     1. 輸入查詢關鍵字  
-    2. 選擇查詢頁數 (最多僅能獲取 25頁 / 500 筆資料)  
+    2. 選擇查詢頁數
     3. 點擊「開始查詢」  
-    4. 可下載 Excel 或批量下載 PDF
-    """)
-
-    st.header("⚠️ 檢索字詞說明事項")
-    st.markdown("""
+    4. 可下載 Excel、CSV 或批量下載 PDF
+                
+    ## 📖 檢索字詞說明事項
+    
     有關檢索字詞說明，請參見[司法院裁判書系統](https://judgment.judicial.gov.tw/FJUD/default.aspx)檢索字詞輔助說明。進入網頁後於搜尋欄點擊最右邊的「檢索字詞輔助說明」即可參閱。
+                
+    ## ⚠️ 其他注意事項
+                
+    - 若出現錯誤，請多按幾次「開始查詢」
+    - 由於司法院裁判書系統針對一個關鍵字最多僅顯示 500 筆資料，因此建議以精確關鍵字搜尋（如可以新增法院名稱、判決年份等）
     """)
 
 async def main_async():
@@ -470,6 +515,8 @@ async def main_async():
         st.session_state.search_clicked = False
     if "judgments" not in st.session_state:
         st.session_state.judgments = []
+    if "csv_file" not in st.session_state:
+        st.session_state.csv_file = None
     if "excel_file" not in st.session_state:
         st.session_state.excel_file = None
     if "download_all" not in st.session_state:
@@ -508,6 +555,7 @@ async def main_async():
         st.session_state.download_all = False
         st.session_state.judgments = []
         st.session_state.excel_file = None
+        st.session_state.csv_file = None
     
     async with get_browser_context() as context:
         if st.session_state.get("search_clicked", False):
@@ -528,10 +576,12 @@ async def main_async():
                         st.session_state.search_completed = True
                 
                 result_count = len(st.session_state.judgments)
-                st.success(f"找到 {result_count} 筆裁判書結果 (共 {st.session_state.total_pages} 頁)")
+                # st.success(f"找到 {result_count} 筆裁判書結果")
                 
                 excel_file = create_excel(st.session_state.judgments)
+                csv_file = create_csv(st.session_state.judgments)
                 st.session_state.excel_file = excel_file
+                st.session_state.csv_file = csv_file
                 
                 results_container = st.container()
                 with results_container:
@@ -578,14 +628,14 @@ async def main_async():
                     
                     df = pd.DataFrame(table_data)
                     df = df.reset_index(drop=True)
-                    st.table(df)
+                    st.table(df.style.hide(axis="index"))
                     
                     if st.button(f"下載當前頁 PDF（{len(current_page_judgments)} 筆）"):
                         st.session_state.batch_download = True
                         st.session_state.batch_judgments = current_page_judgments
                 
                 st.subheader("批量下載選項")
-                col1, col2 = st.columns(2)
+                col1, col2, col3 = st.columns(3)
                 
                 with col1:
                     if st.button("下載所有查詢結果 PDF (ZIP)"):
@@ -595,8 +645,16 @@ async def main_async():
                     st.download_button(
                         label="下載查詢結果清單 (Excel)",
                         data=open(st.session_state.excel_file, "rb"),
-                        file_name="裁判書查詢結果.xlsx",
+                        file_name=f"{keyword}_裁判書查詢結果.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
+
+                with col3:
+                    st.download_button(
+                        label="下載查詢結果清單 (csv)",
+                        data=open(st.session_state.csv_file, "rb"),
+                        file_name=f"{keyword}_裁判書查詢結果.csv",
+                        mime="text/csv"
                     )
         
         if st.session_state.get("batch_download", False) and st.session_state.get("batch_judgments"):
